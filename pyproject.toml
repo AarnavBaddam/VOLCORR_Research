@@ -1,0 +1,36 @@
+[project]
+name = "volcorr"
+version = "1.0.0"
+description = "Pre-registered study: error correlation of time series foundation models vs classical volatility models"
+requires-python = ">=3.11,<3.12"
+dependencies = [
+    "numpy",
+    "pandas",
+    "pyarrow<18",  # newer wheels need NumPy 2; uni2ts pins NumPy 1.26
+    "pyyaml",
+    "scipy",
+    "yfinance",
+    "arch",
+    "torch",
+    "chronos-forecasting",
+    "transformers<5",  # 5.x needs torch>=2.6; uni2ts caps torch below that
+    "timesfm[torch]>=1.2,<2",  # 2.0-500m checkpoint uses the 1.x TimesFm API
+    "uni2ts",
+    "jaxtyping<0.2.35",  # uni2ts 1.1.1 imports jaxtyping.PyTree
+    "pytest",
+]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["."]
+
+[tool.uv]
+package = false  # scripts run from the repo root; nothing is installed into the environment
+
+[tool.uv.sources]
+torch = { index = "pytorch-cu121" }
+
+[[tool.uv.index]]
+name = "pytorch-cu121"
+url = "https://download.pytorch.org/whl/cu121"
+explicit = true

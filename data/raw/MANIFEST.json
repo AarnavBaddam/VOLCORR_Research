@@ -1,0 +1,103 @@
+{
+  "files": {
+    "EEM.csv": {
+      "downloaded_utc": "2026-11-11T03:52:48+00:00",
+      "first": "2015-01-02",
+      "last": "2026-11-06",
+      "rows": 2980,
+      "sha256": "7beb75ee25e0d09ce6afae4ce2960751117e5fde466714ca6e9f58891db0c1f4",
+      "ticker": "EEM",
+      "yfinance": "1.8.0"
+    },
+    "EFA.csv": {
+      "downloaded_utc": "2026-11-11T03:52:47+00:00",
+      "first": "2015-01-02",
+      "last": "2026-11-06",
+      "rows": 2980,
+      "sha256": "161a2694cac64ca7811f4c92a7c7e641dbfaed6b825c471253d98d3472d3ef8b",
+      "ticker": "EFA",
+      "yfinance": "1.8.0"
+    },
+    "GLD.csv": {
+      "downloaded_utc": "2026-11-11T03:52:48+00:00",
+      "first": "2015-01-02",
+      "last": "2026-11-06",
+      "rows": 2980,
+      "sha256": "293c27e2d3f1369ac41db7b6a61b98c3bf04c2c7576874241da68854deb24e87",
+      "ticker": "GLD",
+      "yfinance": "1.8.0"
+    },
+    "IWM.csv": {
+      "downloaded_utc": "2026-11-11T03:52:47+00:00",
+      "first": "2015-01-02",
+      "last": "2026-11-06",
+      "rows": 2980,
+      "sha256": "64426cbc15eccc0f71674fa954f3dc5cad1379fa8ed5afed8d1ff64359a1c8a8",
+      "ticker": "IWM",
+      "yfinance": "1.8.0"
+    },
+    "QQQ.csv": {
+      "downloaded_utc": "2026-11-11T03:52:46+00:00",
+      "first": "2015-01-02",
+      "last": "2026-11-06",
+      "rows": 2980,
+      "sha256": "ac5814782170e8bba9afe6988fa79350ef5e5141f2bb190d5036a6a3410a869d",
+      "ticker": "QQQ",
+      "yfinance": "1.8.0"
+    },
+    "SPY.csv": {
+      "downloaded_utc": "2026-11-11T03:52:46+00:00",
+      "first": "2015-01-02",
+      "last": "2026-11-06",
+      "rows": 2980,
+      "sha256": "70f46d1e87e6698699eff1d6ed8599f40e9a2f9043137b1270f1064b4618fce2",
+      "ticker": "SPY",
+      "yfinance": "1.8.0"
+    },
+    "TLT.csv": {
+      "downloaded_utc": "2026-11-11T03:52:48+00:00",
+      "first": "2015-01-02",
+      "last": "2026-11-06",
+      "rows": 2980,
+      "sha256": "f5cb11d903fa563f9203f052d6dd787e120167c73793ce1f7358d8d6cb2c49b9",
+      "ticker": "TLT",
+      "yfinance": "1.8.0"
+    },
+    "VIX.csv": {
+      "downloaded_utc": "2026-11-11T03:52:50+00:00",
+      "first": "2015-01-02",
+      "last": "2026-11-06",
+      "rows": 2982,
+      "sha256": "bac99daa95938e96a687d92246dee24e2a2481d5781a28b3334a370cbb82ecbc",
+      "ticker": "^VIX",
+      "yfinance": "1.8.0"
+    },
+    "XLE.csv": {
+      "downloaded_utc": "2026-11-11T03:52:49+00:00",
+      "first": "2015-01-02",
+      "last": "2026-11-06",
+      "rows": 2980,
+      "sha256": "0288dfcbf009848f8beeb5eb553b83503422531cbfafa865e4c69849dfef61f4",
+      "ticker": "XLE",
+      "yfinance": "1.8.0"
+    },
+    "XLF.csv": {
+      "downloaded_utc": "2026-11-11T03:52:49+00:00",
+      "first": "2015-01-02",
+      "last": "2026-11-06",
+      "rows": 2980,
+      "sha256": "fea80f352bbd98bc8ff33defdbdb347ac7a1190d7f97ed3aa21de53eb41921c6",
+      "ticker": "XLF",
+      "yfinance": "1.8.0"
+    },
+    "XLK.csv": {
+      "downloaded_utc": "2026-11-11T03:52:50+00:00",
+      "first": "2015-01-02",
+      "last": "2026-11-06",
+      "rows": 2980,
+      "sha256": "c0a28756ae8d0173a2b9f5b1f044a6ca002d1f482bfc6ab2e9216d16b13de044",
+      "ticker": "XLK",
+      "yfinance": "1.8.0"
+    }
+  }
+}

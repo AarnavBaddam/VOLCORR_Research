@@ -1,0 +1,122 @@
+{
+  "raw_files": {
+    "EEM.csv": {
+      "rows": 2980,
+      "first": "2015-01-02",
+      "last": "2026-11-06",
+      "sha256": "7beb75ee25e0d09ce6afae4ce2960751117e5fde466714ca6e9f58891db0c1f4"
+    },
+    "EFA.csv": {
+      "rows": 2980,
+      "first": "2015-01-02",
+      "last": "2026-11-06",
+      "sha256": "161a2694cac64ca7811f4c92a7c7e641dbfaed6b825c471253d98d3472d3ef8b"
+    },
+    "GLD.csv": {
+      "rows": 2980,
+      "first": "2015-01-02",
+      "last": "2026-11-06",
+      "sha256": "293c27e2d3f1369ac41db7b6a61b98c3bf04c2c7576874241da68854deb24e87"
+    },
+    "IWM.csv": {
+      "rows": 2980,
+      "first": "2015-01-02",
+      "last": "2026-11-06",
+      "sha256": "64426cbc15eccc0f71674fa954f3dc5cad1379fa8ed5afed8d1ff64359a1c8a8"
+    },
+    "QQQ.csv": {
+      "rows": 2980,
+      "first": "2015-01-02",
+      "last": "2026-11-06",
+      "sha256": "ac5814782170e8bba9afe6988fa79350ef5e5141f2bb190d5036a6a3410a869d"
+    },
+    "SPY.csv": {
+      "rows": 2980,
+      "first": "2015-01-02",
+      "last": "2026-11-06",
+      "sha256": "70f46d1e87e6698699eff1d6ed8599f40e9a2f9043137b1270f1064b4618fce2"
+    },
+    "TLT.csv": {
+      "rows": 2980,
+      "first": "2015-01-02",
+      "last": "2026-11-06",
+      "sha256": "f5cb11d903fa563f9203f052d6dd787e120167c73793ce1f7358d8d6cb2c49b9"
+    },
+    "VIX.csv": {
+      "rows": 2982,
+      "first": "2015-01-02",
+      "last": "2026-11-06",
+      "sha256": "bac99daa95938e96a687d92246dee24e2a2481d5781a28b3334a370cbb82ecbc"
+    },
+    "XLE.csv": {
+      "rows": 2980,
+      "first": "2015-01-02",
+      "last": "2026-11-06",
+      "sha256": "0288dfcbf009848f8beeb5eb553b83503422531cbfafa865e4c69849dfef61f4"
+    },
+    "XLF.csv": {
+      "rows": 2980,
+      "first": "2015-01-02",
+      "last": "2026-11-06",
+      "sha256": "fea80f352bbd98bc8ff33defdbdb347ac7a1190d7f97ed3aa21de53eb41921c6"
+    },
+    "XLK.csv": {
+      "rows": 2980,
+      "first": "2015-01-02",
+      "last": "2026-11-06",
+      "sha256": "c0a28756ae8d0173a2b9f5b1f044a6ca002d1f482bfc6ab2e9216d16b13de044"
+    }
+  },
+  "calendar_days": 2980,
+  "panel_rows_per_asset": {
+    "EEM": 2980,
+    "EFA": 2980,
+    "GLD": 2980,
+    "IWM": 2980,
+    "QQQ": 2980,
+    "SPY": 2980,
+    "TLT": 2980,
+    "XLE": 2980,
+    "XLF": 2980,
+    "XLK": 2980
+  },
+  "floored_per_asset": {
+    "EEM": 0,
+    "EFA": 0,
+    "GLD": 0,
+    "IWM": 0,
+    "QQQ": 0,
+    "SPY": 0,
+    "TLT": 0,
+    "XLE": 0,
+    "XLF": 0,
+    "XLK": 0
+  },
+  "dropped_bars": [],
+  "open_or_close_outside_high_low_kept": {},
+  "vix_days_filled_forward": 0,
+  "primary_window_origins": 387,
+  "primary_window_stress": {
+    "primary": {
+      "stress_days": 54,
+      "episodes": 9
+    },
+    "r1": {
+      "stress_days": 22,
+      "episodes": 4
+    },
+    "r2": {
+      "stress_days": 4,
+      "episodes": 2
+    },
+    "r3": {
+      "stress_days": 7,
+      "episodes": 1
+    },
+    "r4": {
+      "stress_days": 33,
+      "episodes": 2
+    }
+  },
+  "stress_minimum_met": false
+}
