@@ -36,17 +36,21 @@ def qlike(r, f):
     return x - np.log(x) - 1
 
 
-def log_run(stage, **extra):
-    """Append package versions and the config hash to logs/runs.jsonl."""
+def package_versions():
     versions = {}
     for p in PACKAGES:
         try:
             versions[p] = metadata.version(p)
         except metadata.PackageNotFoundError:
             versions[p] = None
+    return versions
+
+
+def log_run(stage, **extra):
+    """Append package versions and the config hash to logs/runs.jsonl."""
     rec = {"utc": datetime.now(timezone.utc).isoformat(timespec="seconds"), "stage": stage,
            "python": sys.version.split()[0], "platform": platform.platform(),
-           "config_sha256": sha256_file(ROOT / "config.yaml"), "packages": versions, **extra}
+           "config_sha256": sha256_file(ROOT / "config.yaml"), "packages": package_versions(), **extra}
     (ROOT / "logs").mkdir(exist_ok=True)
     with open(ROOT / "logs" / "runs.jsonl", "a", encoding="utf-8") as fh:
         fh.write(json.dumps(rec) + "\n")

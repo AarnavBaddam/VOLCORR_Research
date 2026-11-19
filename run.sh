@@ -19,9 +19,10 @@ stage() {
     dashboard)           py dashboard ;;
     audit)               py audit ;;
     spotcheck)           py spotcheck ;;
+    archive)             py archive "${@:2}" ;;
     test)                uv run --locked pytest -q ;;
-    all) for s in data forecast-classical forecast-foundation recalibrate stats robustness dashboard; do stage "$s"; done ;;
-    *) echo "stages: data forecast-classical forecast-foundation recalibrate stats robustness dashboard audit spotcheck test all"; exit 2 ;;
+    all) for s in data forecast-classical forecast-foundation recalibrate stats robustness dashboard archive; do stage "$s"; done ;;
+    *) echo "stages: data forecast-classical forecast-foundation recalibrate stats robustness dashboard audit spotcheck archive test all"; exit 2 ;;
   esac
 }
 stage "${@:-all}"
