@@ -48,3 +48,34 @@ def test_restore_detects_corrupt_blob(tmp_path):
         b.write_text("tampered")
     with pytest.raises(ValueError):
         restore(run, tmp_path / "out", root=root)
+
+
+@pytest.mark.parametrize("bad_rel", ["../escape.txt", "results/../../escape.txt", "/tmp/escape-abs.txt"])
+def test_restore_rejects_escaping_paths_before_writing(tmp_path, bad_rel):
+    root = tmp_path / "repo"
+    make_repo(root)
+    run = snapshot("evil", root=root)
+    mpath = root / "archive" / "runs" / f"{run}.json"
+    m = json.loads(mpath.read_text())
+    m["files"][bad_rel] = m["files"]["config.yaml"]
+    mpath.write_text(json.dumps(m))
+    dest = tmp_path / "out"
+    with pytest.raises(ValueError):
+        restore(run, dest, root=root)
+    assert not (tmp_path / "escape.txt").exists()
+    assert not dest.exists()  # nothing written, not even the good entries
+
+
+def test_restore_rejects_bad_sha_and_run_id(tmp_path):
+    root = tmp_path / "repo"
+    make_repo(root)
+    run = snapshot("ok", root=root)
+    mpath = root / "archive" / "runs" / f"{run}.json"
+    m = json.loads(mpath.read_text())
+    m["files"]["config.yaml"]["sha256"] = "../../etc/passwd"
+    mpath.write_text(json.dumps(m))
+    with pytest.raises(ValueError):
+        restore(run, tmp_path / "out", root=root)
+    for bad in ["../" + run, "20261119T231709Z-x/../../y", "not-a-run"]:
+        with pytest.raises(ValueError):
+            restore(bad, tmp_path / "out2", root=root)

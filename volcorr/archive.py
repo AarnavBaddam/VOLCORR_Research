@@ -17,6 +17,9 @@ from pathlib import Path
 
 from .common import ROOT, package_versions, sha256_file
 
+RUN_ID = re.compile(r"[0-9]{8}T[0-9]{6}Z(-[A-Za-z0-9_-]+)?")
+SHA256 = re.compile(r"[0-9a-f]{64}")
+
 TRACKED = ["config.yaml", "uv.lock", "pyproject.toml", "README.md", "DEVIATIONS.md", "RESULTS.md",
            "data", "results", "logs", "dashboard/index.html"]
 
@@ -69,7 +72,13 @@ def snapshot(label="", root=ROOT):
     return run_id
 
 
+def _check_run_id(run_id):
+    if not RUN_ID.fullmatch(run_id):
+        raise ValueError(f"bad run_id: {run_id!r}")
+
+
 def load_manifest(run_id, root=ROOT):
+    _check_run_id(run_id)
     return json.loads((root / "archive" / "runs" / f"{run_id}.json").read_text(encoding="utf-8"))
 
 
@@ -88,14 +97,22 @@ def restore(run_id, dest, root=ROOT):
     if dest.exists():
         raise FileExistsError(f"{dest} exists; restore into a new directory")
     files = load_manifest(run_id, root)["files"]
+    base = dest.resolve()
+    plan = []  # validate every entry before writing anything
     for rel, e in files.items():
+        if not SHA256.fullmatch(e["sha256"]):
+            raise ValueError(f"bad sha256 for {rel!r}")
+        out = (dest / rel).resolve()
+        if out == base or not out.is_relative_to(base):
+            raise ValueError(f"manifest path escapes restore dir: {rel!r}")
         blob = root / "archive" / "objects" / e["sha256"][:2] / e["sha256"]
         if sha256_file(blob) != e["sha256"]:
             raise ValueError(f"blob for {rel} is corrupt: {blob}")
-        out = dest / rel
+        plan.append((blob, out))
+    for blob, out in plan:
         out.parent.mkdir(parents=True, exist_ok=True)
         shutil.copyfile(blob, out)
-    return len(files)
+    return len(plan)
 
 
 def main(argv):
