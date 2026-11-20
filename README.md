@@ -44,6 +44,9 @@ asserted equal to the stats output in a test.
 | `stats` | results table | `results/stats/stats.json` and CSVs |
 | `robustness` | results table | `results/stats/robustness.json`, `robustness.csv` |
 | `dashboard` | stats output, manifest, config, lock, DEVIATIONS.md | `dashboard/index.html` |
+| `archive` | every tracked file under `data/`, `results/`, `logs/`, plus config, lock and docs | `archive/runs/<run_id>.json` (committed), `archive/objects/` (gitignored blob store) |
+
+History: `./run.sh all` ends with an `archive` snapshot. Each run gets an immutable manifest (`archive/runs/<run_id>.json`) that records the git commit, dirty files, config hash, package versions and the SHA-256 of every tracked file. Identical files are stored once. Run `bash run.sh archive snapshot <label>` after any stage you want kept, `bash run.sh archive list` to see runs, and `bash run.sh archive restore <run_id> <dir>` to recover one. Results are overwritten in place, so the archive is the only record of earlier runs; back up `archive/objects/` because it is gitignored.
 
 Caching and resuming: raw files are downloaded once and never overwritten; every run re-verifies
 their SHA-256 hashes against the manifest and stops on a mismatch. Forecast stages skip work already
