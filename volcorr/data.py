@@ -6,11 +6,11 @@ from datetime import datetime, timezone
 import numpy as np
 import pandas as pd
 
-from .common import ROOT, gk_variance, load_cfg, log_run, sha256_file
+from .common import DATA_DIR, gk_variance, load_cfg, log_run, sha256_file
 from .stress import all_flags, count_episodes
 
-RAW = ROOT / "data" / "raw"
-CLEAN = ROOT / "data" / "clean"
+RAW = DATA_DIR / "raw"
+CLEAN = DATA_DIR / "clean"
 MANIFEST = RAW / "MANIFEST.json"
 
 

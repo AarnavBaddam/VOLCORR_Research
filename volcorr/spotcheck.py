@@ -8,14 +8,14 @@ import numpy as np
 import pandas as pd
 from arch import arch_model
 
-from .common import CLASSICAL, FOUNDATION, ROOT, load_cfg
+from .common import CLASSICAL, DATA_DIR, FOUNDATION, RESULTS_DIR, load_cfg
 
 SEED = 20261110
 
 
 def raw_series(asset):
     """GK variance and log returns straight from the raw CSV, independent of the data stage."""
-    r = pd.read_csv(ROOT / "data" / "raw" / f"{asset}.csv", index_col=0, parse_dates=True)
+    r = pd.read_csv(DATA_DIR / "raw" / f"{asset}.csv", index_col=0, parse_dates=True)
     gk = [max(0.5 * math.log(h / l) ** 2 - (2 * math.log(2) - 1) * math.log(c / o) ** 2, 1e-8)
           for o, h, l, c in zip(r["Open"], r["High"], r["Low"], r["Close"])]
     return r.index, np.array(gk), np.log(r["Adj Close"]).diff().values
@@ -59,7 +59,7 @@ def foundation_chunk(model, asset, i, first, last, cfg, assets):
 
 def main():
     cfg = load_cfg()
-    df = pd.read_parquet(ROOT / "results" / "forecasts.parquet")
+    df = pd.read_parquet(RESULTS_DIR / "forecasts.parquet")
     assets = sorted(df.asset.unique())
     pool = df[df.recal.notna()].reset_index(drop=True)
     rng = np.random.default_rng(SEED)

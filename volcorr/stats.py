@@ -7,10 +7,10 @@ import numpy as np
 import pandas as pd
 from scipy.stats import norm, rankdata
 
-from .common import CLASSICAL, FOUNDATION, MODELS, ROOT, load_cfg, log_run
+from .common import CLASSICAL, FOUNDATION, MODELS, RESULTS_DIR, VARIANT, DATA_DIR, load_cfg, log_run
 from .stress import count_episodes
 
-OUT = ROOT / "results" / "stats"
+OUT = RESULTS_DIR / "stats"
 FI, CI = [0, 1, 2], [3, 4, 5, 6]            # positions of each family in MODELS
 ENS = {"ens_foundation": FI, "ens_classical": CI, "ens_all": FI + CI}
 SERIES = MODELS + list(ENS)                  # rows of every loss array
@@ -247,6 +247,58 @@ def conclusion(rows, minimum_met):
     return out
 
 
+V2_TEXT = {"H1": "Foundation-model errors are more correlated with each other than classical-model errors.",
+           "H2": "The correlation gap is larger in stress than in calm periods.",
+           "H3": "The ensemble's diversification benefit is smaller in stress than in calm periods.",
+           "H4": "The equal-weight foundation ensemble beats each of its three members."}
+
+
+def verdict_v2(r, p_adj, minimum_met, threshold, alpha, min_days, min_eps):
+    """Section 7 of PREREGISTRATION_v2.0.md, applied mechanically."""
+    if not minimum_met:
+        return "inconclusive", f"Insufficient stress: the pre-registered minimum of {min_days} stress days and {min_eps} episodes is not met."
+    est = r["est"]
+    if est is None or p_adj is None or not np.isfinite(p_adj):
+        return "not supported", "Estimate or p-value unavailable."
+    if est > 0 and p_adj < alpha:
+        if est >= threshold:
+            return "supported", ""
+        return "detectable, below practical threshold", f"Positive and significant, but below the practical threshold {threshold}."
+    if est < 0 and p_adj < alpha:
+        return "opposite direction", "Significant in the direction opposite to the hypothesis."
+    return "not supported", ""
+
+
+def verdicts_v2(res, minimum_met, cfg):
+    """v2.0: Holm across {H2, H3} only; H1 and H4 are replications with intervals and no verdict."""
+    alpha = cfg["inference"]["alpha"]
+    fam = cfg["stopping"]["holm_family"]
+    prac = cfg["stopping"]["practical"]
+    adj = dict(zip(fam, holm([res[h]["p"] if res[h]["p"] is not None else np.nan for h in fam])))
+    st = cfg["stress"]
+    rows = []
+    for h in ("H1", "H2", "H3", "H4"):
+        r = res[h]
+        row = {"id": h, "hypothesis": V2_TEXT[h], "est": r["est"], "lo": r["lo"], "hi": r["hi"], "p": r["p"],
+               "p_holm": float(adj[h]) if h in adj else None, "verdict": None,
+               "note": "Replication on the v2.0 window: interval reported, no verdict.", "members": r.get("members")}
+        if h in adj:
+            row["verdict"], row["note"] = verdict_v2(r, adj[h], minimum_met, prac[h], alpha,
+                                                     st["min_stress_days"], st["min_episodes"])
+        rows.append(row)
+    return rows
+
+
+def conclusion_v2(rows, minimum_met):
+    v = {r["id"]: r for r in rows}
+    out = []
+    for h in ("H2", "H3"):
+        out.append(f"{h}: {v[h]['verdict']}. {v[h]['note']}".rstrip())
+    for h in ("H1", "H4"):
+        out.append(f"{h} replication: estimate {v[h]['est']:.4f} with 95% interval [{v[h]['lo']:.4f}, {v[h]['hi']:.4f}]; no verdict.")
+    return out
+
+
 def window_summary(d, stress_flags=None):
     """Point estimates for one window: correlations, losses and the foundation / HAR-RV QLIKE ratio."""
     s = np.zeros(len(d["dates"]), bool) if stress_flags is None else stress_flags
@@ -276,8 +328,8 @@ def primary_setup(cfg, df, stress_tab, h=1, rule="primary", **kw):
 
 
 def load_inputs():
-    df = pd.read_parquet(ROOT / "results" / "forecasts.parquet")
-    st = pd.read_parquet(ROOT / "data" / "clean" / "stress.parquet").set_index("date")
+    df = pd.read_parquet(RESULTS_DIR / "forecasts.parquet")
+    st = pd.read_parquet(DATA_DIR / "clean" / "stress.parquet").set_index("date")
     return df, st
 
 
@@ -292,12 +344,13 @@ def smoke(cfg, df):
     print(pd.DataFrame(c, CLASSICAL, CLASSICAL).round(3))
 
 
-def main():
-    cfg = load_cfg()
-    df, st = load_inputs()
-    if "--smoke" in sys.argv:
-        return smoke(cfg, df)
-    log_run("stats")
+def is_v2(cfg):
+    return cfg.get("study") == "v2.0"
+
+
+def compute(cfg, df, st):
+    """Every primary-window statistic. Returns (out, tables). Writes nothing."""
+    v2 = is_v2(cfg)
     inf, sc = cfg["inference"], cfg["stress"]
     d = primary_setup(cfg, df, st)
     s, E = d["stress"], d["E"]
@@ -308,7 +361,13 @@ def main():
     idx, Cd, discarded = bootstrap(E, s, inf)
     Lq, Lm = losses(d["F"], d["R"]), losses(d["F"], d["R"], "mse")
     res = evaluate(C0, Cd, Lq, idx, s)
-    hyp = verdicts(res, minimum_met, cfg)
+    if v2:
+        hyp = verdicts_v2(res, minimum_met, cfg)
+        if VARIANT == "e3":  # E3 is exploratory: no verdict on any hypothesis
+            for r in hyp:
+                r["verdict"], r["note"] = None, "Exploratory input-confound run (E3): no verdict."
+    else:
+        hyp = verdicts(res, minimum_met, cfg)
 
     daily = Lq.mean(1)                                   # [series, day]
     rm, rm_mse = regime_means(daily, s[None]), regime_means(Lm.mean(1), s[None])
@@ -350,15 +409,20 @@ def main():
     roll = rolling_rho(full["E"], roll_window)
     stf = st.loc[full["dates"]]
 
+    conc = conclusion_v2(hyp, minimum_met) if v2 else conclusion(hyp, minimum_met)
+    meta = {"horizon": 1, "window": w["primary"], "n_days": len(s), "n_assets": len(d["assets"]),
+            "assets": d["assets"], "models": MODELS, "series": SERIES,
+            "n_stress": n_stress, "n_calm": int((~s).sum()), "n_episodes": n_ep,
+            "min_stress_days": sc["min_stress_days"], "min_episodes": sc["min_episodes"],
+            "stress_minimum_met": bool(minimum_met), "n_boot": inf["n_boot"], "mean_block": inf["mean_block"],
+            "seed": inf["seed"], "discarded_draws": discarded, "valid_draws": len(idx)}
+    if v2:
+        meta.update({"study": "v2.0", "variant": VARIANT or None, "holm_family": cfg["stopping"]["holm_family"],
+                     "tag": cfg["v2"]["tag"], "window_stop": cfg["v2"].get("stop")})
     out = {
-        "meta": {"horizon": 1, "window": w["primary"], "n_days": len(s), "n_assets": len(d["assets"]),
-                 "assets": d["assets"], "models": MODELS, "series": SERIES,
-                 "n_stress": n_stress, "n_calm": int((~s).sum()), "n_episodes": n_ep,
-                 "min_stress_days": sc["min_stress_days"], "min_episodes": sc["min_episodes"],
-                 "stress_minimum_met": bool(minimum_met), "n_boot": inf["n_boot"], "mean_block": inf["mean_block"],
-                 "seed": inf["seed"], "discarded_draws": discarded, "valid_draws": len(idx)},
+        "meta": meta,
         "hypotheses": hyp,
-        "conclusion": conclusion(hyp, minimum_met),
+        "conclusion": conc,
         "components": {k: v for k, v in res.items() if not k.startswith("H")},
         "corr": {name: C0[r].mean(0) for r, name in enumerate(REGIMES)},
         "qlike": qlike,
@@ -372,20 +436,39 @@ def main():
                     "rho_F": roll[0], "rho_C": roll[1], "vix": stf["vix"].values,
                     "stress": stf["primary"].values.astype(int), "primary_start": w["primary"]["start"]},
     }
+    exploratory = None
+    if v2:  # section 8, E1 and E2: exploratory, intervals only
+        from .exploratory import run as run_exploratory
+        exploratory = run_exploratory(cfg, d, idx, s, inf)
+    return out, {"exploratory": exploratory, "n_stress": n_stress, "n_ep": n_ep, "discarded": discarded,
+                 "n_valid": len(idx), "minimum_met": minimum_met}
+
+
+def main():
+    cfg = load_cfg()
+    df, st = load_inputs()
+    if "--smoke" in sys.argv:
+        return smoke(cfg, df)
+    log_run("stats")
+    out, tab = compute(cfg, df, st)
+    hyp = out["hypotheses"]
     write_json("stats.json", out)
     cols = ["id", "est", "lo", "hi", "p", "p_holm", "verdict", "note"]
     pd.DataFrame(hyp)[cols].to_csv(OUT / "hypotheses.csv", index=False, lineterminator="\n")
-    pd.DataFrame(qlike).to_csv(OUT / "qlike.csv", index=False, lineterminator="\n")
+    pd.DataFrame(out["qlike"]).to_csv(OUT / "qlike.csv", index=False, lineterminator="\n")
     pd.DataFrame([{"stat": k, **v} for k, v in out["components"].items()]).to_csv(
         OUT / "components.csv", index=False, lineterminator="\n")
     for name in REGIMES:
         pd.DataFrame(out["corr"][name], MODELS, MODELS).to_csv(OUT / f"corr_{name}.csv", lineterminator="\n")
     pd.DataFrame([{"asset": b["asset"], "asset_class": b["asset_class"], "rho_F": b["rho_F"], "rho_C": b["rho_C"],
                    **{f"diff_{k}": v for k, v in b["diff"].items()}, **{f"qlike_{k}": v for k, v in b["qlike"].items()}}
-                  for b in by_asset]).to_csv(OUT / "by_asset.csv", index=False, lineterminator="\n")
+                  for b in out["by_asset"]]).to_csv(OUT / "by_asset.csv", index=False, lineterminator="\n")
+    if tab["exploratory"] is not None:
+        write_json("exploratory.json", tab["exploratory"])
 
-    print(f"primary window: {len(s)} days, {n_stress} stress days, {n_ep} episodes, minimum met: {minimum_met}")
-    print(f"bootstrap: {len(idx)} valid draws, {discarded} discarded")
+    print(f"primary window: {out['meta']['n_days']} days, {tab['n_stress']} stress days, {tab['n_ep']} episodes, "
+          f"minimum met: {tab['minimum_met']}")
+    print(f"bootstrap: {tab['n_valid']} valid draws, {tab['discarded']} discarded")
     print(pd.DataFrame(hyp)[cols[:-1]].to_string(index=False))
     for line in out["conclusion"]:
         print("-", line)

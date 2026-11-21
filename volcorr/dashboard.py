@@ -4,9 +4,9 @@ import html
 import json
 import re
 
-from .common import PACKAGES, ROOT, load_cfg
+from .common import DASH_DIR, DATA_DIR, PACKAGES, RESULTS_DIR, ROOT, load_cfg
 
-OUT = ROOT / "dashboard" / "index.html"
+OUT = DASH_DIR / "index.html"
 
 
 def md_to_html(text):
@@ -54,16 +54,16 @@ def locked_versions():
 
 def main():
     cfg = load_cfg()
-    stats_dir = ROOT / "results" / "stats"
+    stats_dir = RESULTS_DIR / "stats"
 
     def load(p):
         return json.loads(p.read_text(encoding="utf-8"))
-    dropped = (ROOT / "results" / "dropped_days.csv").read_text().strip().splitlines()[1:]
+    dropped = (RESULTS_DIR / "dropped_days.csv").read_text().strip().splitlines()[1:]
     data = {
         "stats": load(stats_dir / "stats.json"),
         "robustness": load(stats_dir / "robustness.json"),
-        "manifest": load(ROOT / "data" / "raw" / "MANIFEST.json"),
-        "data_report": load(ROOT / "data" / "clean" / "data_report.json"),
+        "manifest": load(DATA_DIR / "raw" / "MANIFEST.json"),
+        "data_report": load(DATA_DIR / "clean" / "data_report.json"),
         "revisions": {k: {"repo": v["repo"], "revision": v["revision"]} for k, v in cfg["foundation"]["models"].items()},
         "versions": locked_versions(),
         "dropped_days": dropped,

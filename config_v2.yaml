@@ -1,0 +1,82 @@
+# Frozen configuration for study v2.0 (PREREGISTRATION_v2.0.md). Values are copied from config.yaml (v1.0)
+# except the items listed in section 9 of the v2.0 pre-registration. Select with VOLCORR_CONFIG=config_v2.yaml.
+# Window start comes from the git tag below; the end and the download cut-off come from data_v2/window.json.
+study: "v2.0"
+prereg_version: "2.0"
+paths: {data: data_v2, results: results_v2, dashboard: dashboard_v2}
+overlap_reference: data/raw   # v1.0 raw files, for the overlap check only
+
+data:
+  assets: [SPY, QQQ, IWM, EFA, EEM, TLT, GLD, XLF, XLE, XLK]
+  vix: "^VIX"
+  source: yfinance
+  auto_adjust: false
+  sample_start: "2015-01-02"
+  sample_end: "from_stop_rule"   # set to T + 5 trading days in data_v2/window.json
+
+target:
+  gk_floor: 1.0e-8
+  horizons: [1, 5]        # 1 = primary, 5 = exploratory
+  primary_horizon: 1
+
+windows:
+  primary: {start: "from_tag", end: "from_stop_rule"}   # confirmatory: start from tag prereg-v2.0, end from the stopping rule
+  secondary: {start: "2019-01-02", end: "2025-04-15"}   # diagnostic only, possibly contaminated
+  crisis:                                               # exploratory, secondary window only
+    - {start: "2020-02-20", end: "2020-04-30"}
+    - {start: "2022-01-03", end: "2022-10-14"}
+    - {start: "2023-03-08", end: "2023-03-31"}
+    - {start: "2024-08-01", end: "2024-08-15"}
+    - {start: "2025-04-02", end: "2025-04-30"}
+
+foundation:
+  context: 512
+  seed: 20261110
+  models:
+    chronos_bolt_base: {repo: amazon/chronos-bolt-base, revision: 5d9f166d69f47aef3401367a7b842e78fe97b121, quantile: 0.5}
+    timesfm_2_0_500m: {repo: google/timesfm-2.0-500m-pytorch, revision: dc2443792ce5516872b89b37cf1bc058c3bf0c10, freq: 0}
+    moirai_1_1_r_base: {repo: Salesforce/moirai-1.1-R-base, revision: a0358780de4cdd7ac7963b12ae9985d225d55026, num_samples: 100}
+
+classical:
+  window: 1000
+  refit_every: 20
+  garch: {mean: constant, dist: normal, p: 1, q: 1}
+  gjr: {mean: constant, dist: normal, p: 1, o: 1, q: 1}
+  ewma: {lambda: 0.94, init_obs: 30}
+  har: {lags: [1, 5, 22]}
+
+recalibration:
+  window: 1000
+  refit_every: 20
+
+stress:
+  primary: {lookback: 252, percentile: 80}
+  r1_vix_above: 25
+  r2_vix_above: 30
+  r3: {drawdown: 0.10, lookback: 252}
+  r4: {rv_days: 21, lookback: 252, percentile: 90}
+  min_stress_days: 90
+  min_episodes: 6
+  episode_max_gap: 5
+
+inference:
+  n_boot: 10000
+  mean_block: 10
+  min_stress_days_per_draw: 20
+  seed: 20261110
+  alpha: 0.05
+  dm_bandwidth: 5
+  mcs_level: 0.10
+  robustness_blocks: [5, 20]
+
+decision:
+  min_corr_effect: 0.05
+  min_d_effect: 0.02
+
+stopping:
+  tag: "prereg-v2.0"
+  monitor_ticker: "^VIX"
+  hard_stop: "2031-12-31"
+  download_lag_trading_days: 5
+  holm_family: [H2, H3]
+  practical: {H2: 0.05, H3: 0.02}

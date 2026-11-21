@@ -3,7 +3,7 @@ Every function takes data that ends at the origin and returns per-day variance f
 import numpy as np
 from arch import arch_model
 
-from .common import CLASSICAL, MAX_H, RAW_DIR, attempt, load_cfg, load_panel, log_run, origin_range, raw_rows
+from .common import CLASSICAL, MAX_H, RAW_DIR, attempt, input_series, load_cfg, load_panel, log_run, origin_range, raw_rows
 
 SCALE = 100.0  # returns in percent for the optimizer; variances are scaled back
 
@@ -77,14 +77,17 @@ def main():
     cfg = load_cfg()
     log_run("forecast-classical")
     gk, ret = load_panel()
+    series = input_series(gk, ret, cfg)
     first, last = origin_range(cfg, gk.index)
     dates = gk.index[first:last + 1]
     RAW_DIR.mkdir(parents=True, exist_ok=True)
-    for model in CLASSICAL:
+    # E3 reruns only HAR-RV on the new input; GARCH, GJR and EWMA do not use the GK input and are copied in afterwards
+    models = ["har"] if cfg["variant"] == "e3" else CLASSICAL
+    for model in models:
         out = RAW_DIR / f"{model}.parquet"
         if out.exists():  # resumable: finished models are skipped
             continue
-        parts = [raw_rows(model, a, dates, run_asset(model, np.log(gk[a].values), ret[a].values, first, last, cfg["classical"]))
+        parts = [raw_rows(model, a, dates, run_asset(model, np.log(series[a].values), ret[a].values, first, last, cfg["classical"]))
                  for a in gk.columns]
         tmp = out.with_suffix(".tmp")
         pd.concat(parts, ignore_index=True).to_parquet(tmp, index=False)

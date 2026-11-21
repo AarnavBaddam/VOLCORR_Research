@@ -8,7 +8,7 @@ import numpy as np
 import pandas as pd
 
 from .classical import run_asset
-from .common import CLASSICAL, MODELS, ROOT, load_cfg, load_panel, origin_range
+from .common import CLASSICAL, DATA_DIR, MODELS, RESULTS_DIR, load_cfg, load_panel, origin_range
 from .foundation import CHUNK, chunk_inputs
 from .stress import all_flags
 
@@ -23,7 +23,7 @@ def check(name, ok, detail=""):
 
 def main():
     cfg = load_cfg()
-    df = pd.read_parquet(ROOT / "results" / "forecasts.parquet")
+    df = pd.read_parquet(RESULTS_DIR / "forecasts.parquet")
     gk, ret = load_panel()
     cal = gk.index
     first, last = origin_range(cfg, cal)
@@ -76,8 +76,8 @@ def main():
     check("each foundation context is exactly the 512 log-variance values ending at its origin",
           all(np.array_equal(x[a * len(idx) + j], y[i - 511:i + 1, a]) for a in range(y.shape[1]) for j, i in enumerate(idx)))
 
-    st = pd.read_parquet(ROOT / "data" / "clean" / "stress.parquet").set_index("date")
-    spy = pd.read_parquet(ROOT / "data" / "clean" / "panel.parquet").query("asset == 'SPY'").set_index("date")
+    st = pd.read_parquet(DATA_DIR / "clean" / "stress.parquet").set_index("date")
+    spy = pd.read_parquet(DATA_DIR / "clean" / "panel.parquet").query("asset == 'SPY'").set_index("date")
     vix2, close2, lr2 = st["vix"].copy(), spy["close"].copy(), spy["logret"].copy()
     vix2.iloc[cut + 1:] *= 3
     close2.iloc[cut + 1:] *= 0.5

@@ -21,8 +21,10 @@ stage() {
     spotcheck)           py spotcheck ;;
     archive)             py archive "${@:2}" ;;
     test)                uv run --locked pytest -q ;;
+    v2-status)           VOLCORR_CONFIG=config_v2.yaml uv run --locked python -m volcorr.v2 status ;;
+    v2-all)              VOLCORR_CONFIG=config_v2.yaml uv run --locked python -m volcorr.v2 run ;;
     all) for s in data forecast-classical forecast-foundation recalibrate stats robustness dashboard archive; do stage "$s"; done ;;
-    *) echo "stages: data forecast-classical forecast-foundation recalibrate stats robustness dashboard audit spotcheck archive test all"; exit 2 ;;
+    *) echo "stages: data forecast-classical forecast-foundation recalibrate stats robustness dashboard audit spotcheck archive test all | v2-status v2-all"; exit 2 ;;
   esac
 }
 stage "${@:-all}"

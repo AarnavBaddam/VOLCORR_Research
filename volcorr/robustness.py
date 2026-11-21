@@ -5,8 +5,8 @@ import numpy as np
 import pandas as pd
 
 from .common import MODELS, load_cfg, log_run
-from .stats import (CI, FI, OUT, SERIES, bootstrap, corr3, evaluate, load_inputs, losses, prepare, primary_setup,
-                    write_json)
+from .stats import (CI, FI, OUT, SERIES, bootstrap, corr3, evaluate, is_v2, load_inputs, losses, prepare,
+                    primary_setup, write_json)
 from .stress import count_episodes
 
 HS = ("H1", "H2", "H3", "H4")
@@ -31,13 +31,40 @@ def ev(run, d, **kw):
     return evaluate(run["C0"], run["Cd"], kw.pop("La", run["La"]), run["idx"], d["stress"], **kw)
 
 
-def main():
-    cfg = load_cfg()
-    log_run("robustness")
-    inf, sc = cfg["inference"], cfg["stress"]
-    df, st = load_inputs()
-    d = primary_setup(cfg, df, st)
-    base = full_run(d, inf)
+def stress_row(cfg, df, st, inf, sc, rule, keep=HS):
+    dr = primary_setup(cfg, df, st, rule=rule)
+    n = int(dr["stress"].sum())
+    extra = {"n_stress": n, "n_episodes": count_episodes(dr["stress"], sc["episode_max_gap"])}
+    if n < inf["min_stress_days_per_draw"]:
+        return row("Stress rule", rule.upper(), None, note="Not estimable: fewer than 20 stress days.", **extra)
+    rr = full_run(dr, inf)
+    return row("Stress rule", rule.upper(), ev(rr, dr), keep=keep, discarded=rr["discarded"], **extra)
+
+
+def v2_rows(cfg, df, st, d, base, inf):
+    """Section 8 robustness list of v2.0 only: R1 and R4, 5-day horizon, squared-return target, block lengths
+    (inf.robustness_blocks), leave one asset out. All exploratory; H1 and H4 are reported without verdicts."""
+    sc = cfg["stress"]
+    rows = [row("Primary result", "1-day, GK target, primary stress rule, QLIKE, block 10", ev(base, d),
+                discarded=base["discarded"])]
+    d5 = primary_setup(cfg, df, st, h=5)
+    r5 = full_run(d5, inf)
+    rows.append(row("Horizon", "5-day", ev(r5, d5), discarded=r5["discarded"], n_days=len(d5["dates"])))
+    for rule in ("r1", "r4"):
+        rows.append(stress_row(cfg, df, st, inf, sc, rule))
+    dq = primary_setup(cfg, df, st, target="target_sqret", recal="recal_sqret")
+    rq = full_run(dq, inf)
+    rows.append(row("Target", "Squared daily returns", ev(rq, dq), discarded=rq["discarded"]))
+    for block in inf["robustness_blocks"]:
+        rb = full_run(d, inf, block)
+        rows.append(row("Block length", f"mean block {block}", ev(rb, d), discarded=rb["discarded"]))
+    for a, name in enumerate(d["assets"]):
+        rows.append(row("Leave one asset out", f"without {name}",
+                        ev(base, d, assets=[i for i in range(len(d["assets"])) if i != a])))
+    return rows
+
+
+def v1_rows(cfg, df, st, d, base, inf, sc):
     rows = [row("Primary result", "1-day, GK target, primary stress rule, QLIKE, block 10", ev(base, d),
                 discarded=base["discarded"])]
 
@@ -80,6 +107,17 @@ def main():
         rows.append(row("Block length", f"mean block {block}", ev(rb, d), discarded=rb["discarded"]))
 
     rows.append(row("Loss", "MSE", ev(base, d, La=losses(d["F"], d["R"], "mse")), keep=("H3", "H4")))
+    return rows
+
+
+def main():
+    cfg = load_cfg()
+    log_run("robustness")
+    inf, sc = cfg["inference"], cfg["stress"]
+    df, st = load_inputs()
+    d = primary_setup(cfg, df, st)
+    base = full_run(d, inf)
+    rows = v2_rows(cfg, df, st, d, base, inf) if is_v2(cfg) else v1_rows(cfg, df, st, d, base, inf, sc)
 
     write_json("robustness.json", {"rows": rows})
     flat = [{"check": r["check"], "variant": r["variant"], "note": r.get("note", ""),

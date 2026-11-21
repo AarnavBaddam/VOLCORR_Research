@@ -15,7 +15,7 @@ except ImportError:  # only matters for inference; the pure helpers below still 
 import numpy as np
 import pandas as pd
 
-from .common import FOUNDATION, MAX_H, RAW_DIR, load_cfg, load_panel, log_run, origin_range, raw_rows
+from .common import FOUNDATION, MAX_H, RAW_DIR, input_series, load_cfg, load_panel, log_run, origin_range, raw_rows
 
 CHUNK = 20  # origins per chunk (x 10 assets = 200 series per batch)
 
@@ -121,7 +121,8 @@ def main():
     torch.backends.cudnn.deterministic = True
     torch.backends.cudnn.benchmark = False
     log_run("forecast-foundation", device=args.device, revisions={k: v["revision"] for k, v in fc["models"].items()})
-    gk, _ = load_panel()
+    gk, ret = load_panel()
+    series = input_series(gk, ret, cfg)  # v1: log GK variance; v2.0 E3: log squared returns
     first, last = origin_range(cfg, gk.index)
     n_chunks = -(-(last - first + 1) // CHUNK)
     for model in args.models:
@@ -133,7 +134,7 @@ def main():
         predict, length = LOADERS[model](fc["models"][model], fc, args.device)
         t0 = time.time()
         for n, k in enumerate(todo, 1):
-            idx, out = run_chunk(predict, gk, first, last, k, length, fc["seed"])
+            idx, out = run_chunk(predict, series, first, last, k, length, fc["seed"])
             tmp = out_dir / f"chunk_{k:04d}.tmp"
             chunk_frame(model, gk, idx, out).to_parquet(tmp, index=False)
             tmp.replace(out_dir / f"chunk_{k:04d}.parquet")

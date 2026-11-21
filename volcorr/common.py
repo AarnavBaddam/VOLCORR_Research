@@ -2,6 +2,7 @@
 import hashlib
 import json
 import math
+import os
 import platform
 import sys
 from datetime import datetime, timezone
@@ -11,13 +12,46 @@ from pathlib import Path
 import numpy as np
 import yaml
 
+from .window import resolve_window
+
 ROOT = Path(__file__).resolve().parent.parent
 PACKAGES = ["numpy", "pandas", "pyarrow", "scipy", "yfinance", "arch", "torch",
             "chronos-forecasting", "timesfm", "uni2ts", "transformers"]
 
+# VOLCORR_CONFIG selects the study (default v1.0 config.yaml). VOLCORR_VARIANT=e3 is the v2.0 input-confound run.
+VARIANT = os.environ.get("VOLCORR_VARIANT", "")
+DEFAULT_PATHS = {"data": "data", "results": "results", "dashboard": "dashboard"}
+
+
+def config_path():
+    return ROOT / os.environ.get("VOLCORR_CONFIG", "config.yaml")
+
+
+def _read_cfg():
+    return yaml.safe_load(config_path().read_text(encoding="utf-8"))
+
+
+def _paths(cfg):
+    p = {**DEFAULT_PATHS, **(cfg.get("paths") or {})}
+    if VARIANT == "e3":
+        p["results"] = p["results"] + "/e3"
+    return p
+
+
+PATHS = _paths(_read_cfg())
+DATA_DIR = ROOT / PATHS["data"]
+RESULTS_DIR = ROOT / PATHS["results"]
+DASH_DIR = ROOT / PATHS["dashboard"]
+
 
 def load_cfg():
-    return yaml.safe_load((ROOT / "config.yaml").read_text(encoding="utf-8"))
+    cfg = _read_cfg()
+    cfg["paths"] = dict(PATHS)
+    cfg["variant"] = VARIANT or None
+    cfg["forecast_input"] = "sqret" if VARIANT == "e3" else cfg.get("forecast_input", "gk")
+    if cfg.get("study") == "v2.0":
+        resolve_window(cfg, DATA_DIR, ROOT)
+    return cfg
 
 
 def sha256_file(path):
@@ -50,7 +84,8 @@ def log_run(stage, **extra):
     """Append package versions and the config hash to logs/runs.jsonl."""
     rec = {"utc": datetime.now(timezone.utc).isoformat(timespec="seconds"), "stage": stage,
            "python": sys.version.split()[0], "platform": platform.platform(),
-           "config_sha256": sha256_file(ROOT / "config.yaml"), "packages": package_versions(), **extra}
+           "config": config_path().name, "config_sha256": sha256_file(config_path()),
+           "packages": package_versions(), **extra}
     (ROOT / "logs").mkdir(exist_ok=True)
     with open(ROOT / "logs" / "runs.jsonl", "a", encoding="utf-8") as fh:
         fh.write(json.dumps(rec) + "\n")
@@ -60,14 +95,22 @@ def log_run(stage, **extra):
 FOUNDATION = ["chronos_bolt_base", "timesfm_2_0_500m", "moirai_1_1_r_base"]
 CLASSICAL = ["garch", "gjr", "ewma", "har"]
 MODELS = FOUNDATION + CLASSICAL
-RAW_DIR = ROOT / "results" / "raw"
+RAW_DIR = RESULTS_DIR / "raw"
 MAX_H = 5
+
+
+def input_series(gk, ret, cfg):
+    """HAR input: log GK variance (v1, v2 default) or log squared returns floored at gk_floor (v2.0 E3 only).
+    Squared returns have no value on the first calendar day, so that day takes the next day's value."""
+    if cfg["forecast_input"] == "gk":
+        return gk
+    return (ret ** 2).bfill().clip(lower=cfg["target"]["gk_floor"])
 
 
 def load_panel():
     """Wide (date x asset) frames of GK variance and log returns."""
     import pandas as pd
-    p = pd.read_parquet(ROOT / "data" / "clean" / "panel.parquet")
+    p = pd.read_parquet(DATA_DIR / "clean" / "panel.parquet")
     return p.pivot(index="date", columns="asset", values="gk"), p.pivot(index="date", columns="asset", values="logret")
 
 

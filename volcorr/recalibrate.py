@@ -4,9 +4,9 @@ Writes the single results table results/forecasts.parquet."""
 import numpy as np
 import pandas as pd
 
-from .common import CLASSICAL, MODELS, RAW_DIR, ROOT, load_cfg, load_panel, log_run
+from .common import CLASSICAL, MODELS, RAW_DIR, RESULTS_DIR, load_cfg, load_panel, log_run
 
-OUT = ROOT / "results" / "forecasts.parquet"
+OUT = RESULTS_DIR / "forecasts.parquet"
 
 
 def recalibrate(raw, target, h, window, every):
@@ -84,7 +84,7 @@ def main():
     df = pd.concat(out, ignore_index=True)
     df = df[df.raw.notna()].sort_values(["model", "asset", "horizon", "origin_date"]).reset_index(drop=True)
     df.to_parquet(OUT, index=False)
-    dropped.to_csv(ROOT / "results" / "dropped_days.csv", index=False, lineterminator="\n")
+    dropped.to_csv(RESULTS_DIR / "dropped_days.csv", index=False, lineterminator="\n")
     print(f"forecasts.parquet: {len(df)} rows, models={models}, dropped asset-days={len(dropped)}")
     print("first recalibrated origin per horizon:",
           df[df.recal.notna()].groupby("horizon").origin_date.min().dt.date.to_dict())
