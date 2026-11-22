@@ -100,11 +100,13 @@ MAX_H = 5
 
 
 def input_series(gk, ret, cfg):
-    """HAR input: log GK variance (v1, v2 default) or log squared returns floored at gk_floor (v2.0 E3 only).
+    """Model input: GK variance (v1.0 and the v2.0 main run) or, for v2.0 E3 only, the trailing 5-day mean of
+    squared daily log returns (days t-4..t, fewer at the very start of the sample), floored at gk_floor.
+    The 5-day mean keeps the input return-based while avoiding log(1e-8) spikes on near-zero-return days.
     Squared returns have no value on the first calendar day, so that day takes the next day's value."""
     if cfg["forecast_input"] == "gk":
         return gk
-    return (ret ** 2).bfill().clip(lower=cfg["target"]["gk_floor"])
+    return (ret ** 2).rolling(5, min_periods=1).mean().bfill().clip(lower=cfg["target"]["gk_floor"])
 
 
 def load_panel():

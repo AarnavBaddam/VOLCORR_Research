@@ -3,7 +3,8 @@ Hand-coded rules (no calendar dependency). Verify against NYSE's published calen
 from datetime import date, timedelta
 from functools import lru_cache
 
-SPECIAL_CLOSURES = {date(2025, 1, 9)}  # national day of mourning (President Carter)
+SPECIAL_CLOSURES = {date(2018, 12, 5),   # national day of mourning (President George H. W. Bush)
+                    date(2025, 1, 9)}    # national day of mourning (President Carter)
 
 
 def easter(y):

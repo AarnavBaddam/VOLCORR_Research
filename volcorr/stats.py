@@ -392,22 +392,27 @@ def compute(cfg, df, st):
                          "diff": summ(rf - rc, dr), "qlike": {n: Lq[i, a].mean() for i, n in enumerate(SERIES)}})
 
     w = cfg["windows"]
-    sec = prepare(df, 1, w["secondary"]["start"], w["secondary"]["end"])
-    secondary = window_summary(sec)
-    secondary["requested"] = w["secondary"]
-    crisis = []
-    for cw in w["crisis"]:
-        m = (sec["dates"] >= cw["start"]) & (sec["dates"] <= cw["end"])
-        row = {"start": cw["start"], "end": cw["end"], "n_days": int(m.sum()), "rho_F": None, "rho_C": None}
-        if m.sum() >= 5:
-            c = asset_corr(sec["E"][:, :, m]).mean(0)
-            row.update(rho_F=fam_rho(c, FI), rho_C=fam_rho(c, CI))
-        crisis.append(row)
+    secondary = crisis = rolling = None
+    if not v2:  # v1.0 diagnostics only; PREREGISTRATION_v2.0.md section 8 does not include them
+        sec = prepare(df, 1, w["secondary"]["start"], w["secondary"]["end"])
+        secondary = window_summary(sec)
+        secondary["requested"] = w["secondary"]
+        crisis = []
+        for cw in w["crisis"]:
+            m = (sec["dates"] >= cw["start"]) & (sec["dates"] <= cw["end"])
+            row = {"start": cw["start"], "end": cw["end"], "n_days": int(m.sum()), "rho_F": None, "rho_C": None}
+            if m.sum() >= 5:
+                c = asset_corr(sec["E"][:, :, m]).mean(0)
+                row.update(rho_F=fam_rho(c, FI), rho_C=fam_rho(c, CI))
+            crisis.append(row)
 
-    full = prepare(df, 1, w["secondary"]["start"], w["primary"]["end"])
-    roll_window = 63
-    roll = rolling_rho(full["E"], roll_window)
-    stf = st.loc[full["dates"]]
+        full = prepare(df, 1, w["secondary"]["start"], w["primary"]["end"])
+        roll_window = 63
+        roll = rolling_rho(full["E"], roll_window)
+        stf = st.loc[full["dates"]]
+        rolling = {"window": roll_window, "dates": [str(x.date()) for x in full["dates"]],
+                   "rho_F": roll[0], "rho_C": roll[1], "vix": stf["vix"].values,
+                   "stress": stf["primary"].values.astype(int), "primary_start": w["primary"]["start"]}
 
     conc = conclusion_v2(hyp, minimum_met) if v2 else conclusion(hyp, minimum_met)
     meta = {"horizon": 1, "window": w["primary"], "n_days": len(s), "n_assets": len(d["assets"]),
@@ -430,12 +435,9 @@ def compute(cfg, df, st):
         "mcs": mcs_out,
         "by_asset": by_asset,
         "primary_summary": window_summary(d, s),
-        "secondary": secondary,
-        "crisis": crisis,
-        "rolling": {"window": roll_window, "dates": [str(x.date()) for x in full["dates"]],
-                    "rho_F": roll[0], "rho_C": roll[1], "vix": stf["vix"].values,
-                    "stress": stf["primary"].values.astype(int), "primary_start": w["primary"]["start"]},
     }
+    if not v2:
+        out.update({"secondary": secondary, "crisis": crisis, "rolling": rolling})
     exploratory = None
     if v2:  # section 8, E1 and E2: exploratory, intervals only
         from .exploratory import run as run_exploratory

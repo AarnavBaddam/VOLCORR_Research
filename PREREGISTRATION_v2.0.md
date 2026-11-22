@@ -117,8 +117,16 @@ verdict:
 - E1: foundation versus classical diversification benefit, D_C - D_F, on all, stress and calm days, also
   with matched 3-model classical families.
 - E2: correlation of log recalibrated forecasts, computed like the error correlation.
-- E3: input confound. The three foundation models and HAR-RV rerun on log squared daily returns
-  (floored at 1e-8) instead of log Garman-Klass variance; everything else unchanged.
+- E3: input confound. The three foundation models and HAR-RV rerun with a return-based input instead of
+  log Garman-Klass variance: the log of the trailing 5-day mean of squared daily log returns (days t-4 to t),
+  floored at 1e-8. A 5-day mean is used instead of single-day squared returns because near-zero-return days
+  would otherwise put spikes of log(1e-8) into the input series. GARCH, GJR-GARCH, EWMA, the target,
+  recalibration and the bootstrap are unchanged.
+- Descriptive tables on the v2.0 window, carried over from the v1.0 code: mean QLIKE by model and regime,
+  per-asset correlations, Diebold-Mariano tests and the 10% model confidence set.
+
+v1.0's secondary-window (2019 to 2025), crisis-window and rolling-correlation diagnostics are not computed
+in v2.0. They concern the possibly contaminated period and are already reported in v1.0.
 
 ## 9. What changed from v1.0, and why
 

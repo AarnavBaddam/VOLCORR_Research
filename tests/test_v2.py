@@ -243,8 +243,10 @@ def test_v2_stats_path_on_v1_table(tmp_path):
     assert by_id["H2"]["verdict"] == "inconclusive"           # 54 stress days < 90
     assert by_id["H1"]["verdict"] is None and by_id["H4"]["verdict"] is None
     for key in ["meta", "hypotheses", "conclusion", "components", "corr", "qlike", "dm", "mcs", "by_asset",
-                "primary_summary", "secondary", "crisis", "rolling"]:
+                "primary_summary"]:
         assert key in out, key
+    for key in ["secondary", "crisis", "rolling"]:   # v1.0-only diagnostics, not in v2.0 section 8
+        assert key not in out, key
     for key in ["H1", "H2", "H3", "H4"]:
         assert all(f in by_id[key] for f in ["est", "lo", "hi", "p", "p_holm", "verdict", "note"])
     exp = tab["exploratory"]
@@ -252,3 +254,27 @@ def test_v2_stats_path_on_v1_table(tmp_path):
     assert "foundation" in exp["E1"]["D"] and "classical_4" in exp["E1"]["D"]
     assert len([k for k in exp["E1"]["D"] if k.startswith("classical_")]) == 5   # full family + four 3-model subsets
     assert set(exp["E2"]["rho"]) == {"F", "C"}
+
+
+# ---------- E3 input and calendar additions ----------
+
+def test_e3_input_is_causal_floored_five_day_mean():
+    from volcorr.common import input_series
+    idx = pd.bdate_range("2020-01-01", periods=40)
+    rng = np.random.default_rng(1)
+    ret = pd.DataFrame({"A": rng.normal(0, 0.01, 40)}, index=idx)
+    ret.iloc[0] = np.nan
+    ret.iloc[10:15] = 0.0                                   # five zero-return days in a row
+    gk = ret.abs()
+    cfg = {"forecast_input": "sqret", "target": {"gk_floor": 1e-8}}
+    x = input_series(gk, ret, cfg)
+    assert np.isfinite(x.values).all() and (x.values >= 1e-8).all()
+    assert x.iloc[20, 0] == pytest.approx((ret.iloc[16:21, 0] ** 2).mean())
+    assert x.iloc[14, 0] == pytest.approx(1e-8)              # all five zero: floored, not log(0)
+    ret2 = ret.copy(); ret2.iloc[25:] = 0.5                  # change the future
+    assert (input_series(gk, ret2, cfg).iloc[:25] == x.iloc[:25]).all().all()
+    assert input_series(gk, ret, {"forecast_input": "gk", "target": {"gk_floor": 1e-8}}) is gk
+
+
+def test_bush_day_of_mourning_closed():
+    assert not nyse.is_trading_day(date(2018, 12, 5))
